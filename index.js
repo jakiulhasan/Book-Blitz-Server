@@ -41,6 +41,19 @@ async function run() {
     app.post("/add-user", async (req, res) => {
       try {
         const userData = req.body;
+        const email = userData.email;
+        const query = { email };
+
+        if (!email) {
+          return res.status(400).send({ message: "Email is required" });
+        }
+
+        const isExits = await usersCollection.findOne(query);
+
+        if (isExits) {
+          return res.status(409).send({ message: "user already exists" });
+        }
+
         const result = await usersCollection.insertOne(userData);
         res.send(result);
       } catch (error) {
