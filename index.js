@@ -25,11 +25,28 @@ async function run() {
     // await client.db("admin").command({ ping: 1 });
     const db = client.db("BookBlitz");
     const bannerCollection = db.collection("bannerCollection");
+    const usersCollection = db.collection("users");
 
     // users API
     app.get("/banner-slider", async (req, res) => {
-      const result = await bannerCollection.find().toArray();
-      res.send(result);
+      try {
+        const result = await bannerCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Failed", error);
+        res.status(500).send({ message: "Failed" });
+      }
+    });
+
+    app.post("/add-user", async (req, res) => {
+      try {
+        const userData = req.body;
+        const result = await usersCollection.insertOne(userData);
+        res.send(result);
+      } catch (error) {
+        console.error("Failed to add user:", error);
+        res.status(500).send({ message: "Failed to add user" });
+      }
     });
 
     console.log(
