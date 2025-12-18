@@ -62,6 +62,18 @@ async function run() {
       }
     });
 
+    app.get("/users/:email/role", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { email };
+        const user = await usersCollection.findOne(query);
+        res.send({ role: user?.role || "user" });
+      } catch (error) {
+        console.error("Failed to get user role:", error);
+        res.status(500).send({ message: "Failed to get user role" });
+      }
+    });
+
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
