@@ -26,6 +26,7 @@ async function run() {
     const db = client.db("BookBlitz");
     const bannerCollection = db.collection("bannerCollection");
     const usersCollection = db.collection("users");
+    const booksCollection = db.collection("books");
 
     // users API
     app.get("/banner-slider", async (req, res) => {
@@ -71,6 +72,30 @@ async function run() {
       } catch (error) {
         console.error("Failed to get user role:", error);
         res.status(500).send({ message: "Failed to get user role" });
+      }
+    });
+
+    app.get("/books", async (req, res) => {
+      try {
+        const { latest } = req.query;
+        let query = {};
+        let options = {};
+        if (latest === "true") {
+          options = {
+            sort: { publishedDate: -1 },
+            limit: 12,
+          };
+        }
+        const result = await booksCollection
+          .find(query)
+          .sort(options.sort || {})
+          .limit(options.limit || 0)
+          .toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.error("Failed to get books details:", error);
+        res.status(500).send({ message: "Failed to get books details" });
       }
     });
 
