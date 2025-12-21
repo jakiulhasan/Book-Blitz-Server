@@ -5,6 +5,11 @@ const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 
+// This is your test secret API key.
+const stripe = require("stripe")(process.env.Stripe_api_key);
+
+app.listen(4242, () => console.log("Running on port 4242"));
+
 app.use(cors());
 app.use(express.json());
 
@@ -203,6 +208,35 @@ async function run() {
         console.error("Failed to get books details:", error);
         res.status(500).send({ message: "Failed to get books details" });
       }
+    });
+
+    // payment related apis
+    app.post("/payment-checkout-session", async (req, res) => {
+      const paymentInfo = req.body;
+      const amount = parseInt(paymentInfo.cost) * 100;
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              unit_amount: amount,
+              product_data: {
+                name: `Please pay for: ${paymentInfo.parcelName}`,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        metadata: {
+          parcelId: paymentInfo.parcelId,
+        },
+        customer_email: paymentInfo.senderEmail,
+        success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled`,
+      });
+
+      res.send({ url: session.url });
     });
 
     console.log(
