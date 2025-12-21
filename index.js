@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const app = express();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 
 app.use(cors());
@@ -75,24 +75,65 @@ async function run() {
       }
     });
 
+    app.get("/books/:id", async (req, res) => {
+      try {
+        const isbn = req.params.id;
+        const query = { isbn };
+        const book = await booksCollection.findOne(query);
+        if (!book) {
+          return res.status(404).send({ message: "Book not found" });
+        }
+        res.send(book);
+      } catch (error) {
+        console.error("Failed to get book details:", error);
+        res.status(500).send({ message: "Failed to get book details" });
+      }
+    });
+
     app.get("/books", async (req, res) => {
       try {
-        const { latest } = req.query;
+        const { latest, limit, skip, maxPrice, categories, sort } = req.query; // Added sort
+
         let query = {};
-        let options = {};
-        if (latest === "true") {
-          options = {
-            sort: { publishedDate: -1 },
-            limit: 12,
-          };
+        let sortOptions = {};
+
+        // 1. Handle Sorting
+        if (sort) {
+          const [field, order] = sort.split(":");
+          sortOptions[field] = order === "asc" ? 1 : -1;
         }
-        const result = await booksCollection
+
+        // 2. Handle Price Filter
+        if (maxPrice) {
+          query.price = { $lte: parseFloat(maxPrice) };
+        }
+
+        // 3. Handle Categories Filter (Fix is here)
+        if (categories) {
+          const catArray = categories.split(",");
+          // This matches if ANY of the book's categories are in the selected list
+          query.categories = { $in: catArray };
+        }
+
+        const finalLimit = parseInt(limit) || 12;
+        const finalSkip = parseInt(skip) || 0;
+
+        const books = await booksCollection
           .find(query)
-          .sort(options.sort || {})
-          .limit(options.limit || 0)
+          .sort(sortOptions) // Apply the sort here
+          .skip(finalSkip)
+          .limit(finalLimit)
           .toArray();
 
-        res.send(result);
+        const totalBooks = await booksCollection.countDocuments(query);
+
+        res.send({
+          books: books,
+          nextSkip:
+            finalSkip + books.length < totalBooks
+              ? finalSkip + books.length
+              : null,
+        });
       } catch (error) {
         console.error("Failed to get books details:", error);
         res.status(500).send({ message: "Failed to get books details" });
