@@ -8,6 +8,24 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+const verifyFBToken = async (req, res, next) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+
+  try {
+    const idToken = token.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    console.log("decoded in the token", decoded);
+    req.decoded_email = decoded.email;
+    next();
+  } catch (err) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+};
+
 const uri = `mongodb+srv://${process.env.DB_User}:${process.env.DB_Password}@cluster0.8gmleuq.mongodb.net/?appName=Cluster0`;
 
 const client = new MongoClient(uri, {
@@ -27,6 +45,7 @@ async function run() {
     const bannerCollection = db.collection("bannerCollection");
     const usersCollection = db.collection("users");
     const booksCollection = db.collection("books");
+    const ordersCollection = db.collection("orders");
 
     // users API
     app.get("/banner-slider", async (req, res) => {
@@ -87,6 +106,33 @@ async function run() {
       } catch (error) {
         console.error("Failed to get book details:", error);
         res.status(500).send({ message: "Failed to get book details" });
+      }
+    });
+
+    app.get("/orders", async (req, res) => {
+      try {
+        const email = req.query.email;
+        console.log(email);
+        if (!email) {
+          return res.status(400).send({ message: "Email is required" });
+        }
+        const query = { email: email };
+        const orders = await ordersCollection.find(query).toArray();
+        res.send(orders);
+      } catch (error) {
+        console.error("Failed to get orders:", error);
+        res.status(500).send({ message: "Failed to get orders" });
+      }
+    });
+
+    app.post("/orders", async (req, res) => {
+      try {
+        const orderData = req.body;
+        const result = await ordersCollection.insertOne(orderData);
+        res.send(result);
+      } catch (error) {
+        console.error("Failed to place order:", error);
+        res.status(500).send({ message: "Failed to place order" });
       }
     });
 
