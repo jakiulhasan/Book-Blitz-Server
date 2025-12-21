@@ -136,6 +136,25 @@ async function run() {
       }
     });
 
+    app.patch("/orders/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { status } = req.body;
+        if (!id || id.length !== 24) {
+          return res.status(400).send({ message: "Invalid Order ID format" });
+        }
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: { status: status },
+        };
+        const result = await ordersCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } catch (error) {
+        console.error("Failed to update order status:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
     app.get("/books", async (req, res) => {
       try {
         const { latest, limit, skip, maxPrice, categories, sort } = req.query; // Added sort
