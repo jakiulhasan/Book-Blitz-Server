@@ -148,6 +148,24 @@ async function run() {
       }
     });
 
+    app.patch("/librarian/orders/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { status } = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            shipedStatus: status,
+          },
+        };
+        const result = await ordersCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } catch (error) {
+        console.error("Failed to update order:", error);
+        res.status(500).send({ message: "Failed to update order" });
+      }
+    });
+
     app.get("/librarian/books", async (req, res) => {
       try {
         const email = req.query.email;
