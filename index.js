@@ -114,6 +114,25 @@ async function run() {
       }
     });
 
+    app.patch("/librarian/books/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { status } = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            status,
+          },
+        };
+
+        const result = await booksCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } catch (error) {
+        console.error("Failed to update book:", error);
+        res.status(500).send({ message: "Failed to update book" });
+      }
+    });
+
     app.get("/librarian/books", async (req, res) => {
       try {
         const email = req.query.email;
