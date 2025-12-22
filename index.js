@@ -133,6 +133,21 @@ async function run() {
       }
     });
 
+    app.get("/librarian/orders", async (req, res) => {
+      try {
+        const email = req.query.email;
+        if (!email) {
+          return res.status(400).send({ message: "Email is required" });
+        }
+        const query = { librarianEmail: email };
+        const books = await ordersCollection.find(query).toArray();
+        res.send(books);
+      } catch (error) {
+        console.error("Failed to get books:", error);
+        res.status(500).send({ message: "Failed to get books" });
+      }
+    });
+
     app.get("/librarian/books", async (req, res) => {
       try {
         const email = req.query.email;
@@ -279,6 +294,7 @@ async function run() {
         metadata: {
           parcelId: paymentInfo.parcelId,
           parcelName: paymentInfo.parcelName,
+          librarianEmail: paymentInfo.librarianEmail,
         },
         customer_email: paymentInfo.senderEmail,
         success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -349,6 +365,7 @@ async function run() {
             amount_total: session.amount_total / 100,
             currency: session.currency,
             customer_email: session.customer_details?.email,
+
             date: new Date(),
           };
 
