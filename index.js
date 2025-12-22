@@ -352,6 +352,17 @@ async function run() {
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
+
+    app.post("/librarian/books", async (req, res) => {
+      try {
+        const bookData = req.body;
+        const result = await booksCollection.insertOne(bookData);
+        res.send(result);
+      } catch (error) {
+        console.error("Failed to add book:", error);
+        res.status(500).send({ message: "Failed to add book" });
+      }
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
