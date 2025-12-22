@@ -64,6 +64,16 @@ async function run() {
       }
     });
 
+    app.get("/users", async (req, res) => {
+      try {
+        const result = await usersCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Failed to add user:", error);
+        res.status(500).send({ message: "Failed to add user" });
+      }
+    });
+
     app.post("/add-user", async (req, res) => {
       try {
         const userData = req.body;
