@@ -100,6 +100,20 @@ async function run() {
       }
     });
 
+    app.get("/books/latest", async (req, res) => {
+      try {
+        const latestBooks = await booksCollection
+          .find()
+          .sort({ publishedDate: -1 })
+          .limit(10)
+          .toArray();
+        res.send(latestBooks);
+      } catch (error) {
+        console.error("Failed to get latest books:", error);
+        res.status(500).send({ message: "Failed to get latest books" });
+      }
+    });
+
     app.get("/books/:id", async (req, res) => {
       try {
         const isbn = req.params.id;
@@ -162,7 +176,7 @@ async function run() {
 
     app.get("/books", async (req, res) => {
       try {
-        const { latest, limit, skip, maxPrice, categories, sort } = req.query; // Added sort
+        const { limit, skip, maxPrice, categories, sort } = req.query; // Added sort
 
         let query = {};
         let sortOptions = {};
@@ -356,6 +370,7 @@ async function run() {
     app.post("/librarian/books", async (req, res) => {
       try {
         const bookData = req.body;
+        console.log(bookData);
         const result = await booksCollection.insertOne(bookData);
         res.send(result);
       } catch (error) {
