@@ -64,6 +64,23 @@ async function run() {
       }
     });
 
+    app.patch("/users/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            role: req.body.role,
+          },
+        };
+        const result = await usersCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } catch (error) {
+        console.error("Failed to add user:", error);
+        res.status(500).send({ message: "Failed to add user" });
+      }
+    });
+
     app.get("/users", async (req, res) => {
       try {
         const result = await usersCollection.find().toArray();
