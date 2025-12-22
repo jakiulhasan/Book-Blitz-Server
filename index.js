@@ -114,6 +114,21 @@ async function run() {
       }
     });
 
+    app.get("/librarian/books", async (req, res) => {
+      try {
+        const email = req.query.email;
+        if (!email) {
+          return res.status(400).send({ message: "Email is required" });
+        }
+        const query = { librarianEmail: email };
+        const books = await booksCollection.find(query).toArray();
+        res.send(books);
+      } catch (error) {
+        console.error("Failed to get books:", error);
+        res.status(500).send({ message: "Failed to get books" });
+      }
+    });
+
     app.get("/books/:id", async (req, res) => {
       try {
         const isbn = req.params.id;
