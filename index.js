@@ -51,6 +51,7 @@ async function run() {
     const usersCollection = db.collection("users");
     const booksCollection = db.collection("books");
     const ordersCollection = db.collection("orders");
+    const paymentCollection = db.collection("payment");
 
     // users API
     app.get("/banner-slider", async (req, res) => {
@@ -237,6 +238,25 @@ async function run() {
       });
 
       res.send({ url: session.url });
+    });
+
+    app.patch("/payment-success", async (req, res) => {
+      const sessionId = req.query.session_id;
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      if (session.payment_status === "paid") {
+        const id = session.metadata.parcelId;
+        const query = { _id: new ObjectId(id) };
+        const update = {
+          $set: {
+            status: "paid",
+          },
+        };
+
+        const result = await ordersCollection.updateOne(query, update);
+        return res.send(result);
+      }
+      return res.send({ success: false });
     });
 
     console.log(
