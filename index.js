@@ -231,6 +231,7 @@ async function run() {
         mode: "payment",
         metadata: {
           parcelId: paymentInfo.parcelId,
+          parcelName: paymentInfo.parcelName,
         },
         customer_email: paymentInfo.senderEmail,
         success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -240,25 +241,96 @@ async function run() {
       res.send({ url: session.url });
     });
 
+    // app.patch("/payment-success", async (req, res) => {
+    //   const sessionId = req.query.session_id;
+    //   const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    //   const query = { paymentID: session.payment_intent };
+
+    //   const result = paymentCollection.findOne(query);
+    //   console.log(result);
+    //   if (result) {
+    //     res.send({ message: "Payment already recorded" });
+    //   }
+
+    //   const paymentRecord = {
+    //     paymentID: session.payment_intent,
+    //     amount_total: session.amount_total / 100,
+    //     date: new Date(),
+    //   };
+
+    //   await paymentCollection.insertOne(paymentRecord);
+
+    //   if (session.payment_status === "paid") {
+    //     const id = session.metadata.parcelId;
+    //     const query = { _id: new ObjectId(id) };
+    //     const update = {
+    //       $set: {
+    //         status: "paid",
+    //       },
+    //     };
+
+    //     const result = await ordersCollection.updateOne(query, update);
+    //     return res.send(result);
+    //   }
+    //   return res.send({ success: false });
+    // });
+
     app.patch("/payment-success", async (req, res) => {
-      const sessionId = req.query.session_id;
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      try {
+        const sessionId = req.query.session_id;
+        if (!sessionId) {
+          return res.status(400).send({ message: "Session ID is required" });
+        }
 
-      if (session.payment_status === "paid") {
-        const id = session.metadata.parcelId;
-        const query = { _id: new ObjectId(id) };
-        const update = {
-          $set: {
-            status: "paid",
-          },
-        };
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-        const result = await ordersCollection.updateOne(query, update);
-        return res.send(result);
+        const query = { paymentID: session.payment_intent };
+        const existingPayment = await paymentCollection.findOne(query);
+
+        if (existingPayment) {
+          return res.send({
+            message: "Payment already recorded",
+            success: true,
+          });
+        }
+
+        if (session.payment_status === "paid") {
+          const paymentRecord = {
+            paymentID: session.payment_intent,
+            title: session.metadata.parcelName,
+            amount_total: session.amount_total / 100,
+            currency: session.currency,
+            customer_email: session.customer_details?.email,
+            date: new Date(),
+          };
+
+          await paymentCollection.insertOne(paymentRecord);
+
+          const parcelId = session.metadata.parcelId;
+          const orderQuery = { _id: new ObjectId(parcelId) };
+          const updateDoc = {
+            $set: { status: "paid" },
+          };
+
+          const updateResult = await ordersCollection.updateOne(
+            orderQuery,
+            updateDoc
+          );
+
+          return res.send(updateResult);
+        } else {
+          return res
+            .status(400)
+            .send({ success: false, message: "Payment not verified" });
+        }
+      } catch (error) {
+        console.error("Error processing payment success:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Internal Server Error" });
       }
-      return res.send({ success: false });
     });
-
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
