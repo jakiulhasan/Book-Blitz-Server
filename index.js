@@ -208,6 +208,40 @@ async function run() {
       }
     });
 
+    app.delete("/books/:bookId", async (req, res) => {
+      try {
+        const { bookId } = req.params;
+        let query;
+
+        if (ObjectId.isValid(bookId) && bookId.length === 24) {
+          query = {
+            $or: [{ _id: new ObjectId(bookId) }, { _id: bookId }],
+          };
+        } else {
+          query = {
+            $or: [
+              { _id: bookId },
+              { _id: parseInt(bookId) },
+              { _id: Number(bookId) },
+            ],
+          };
+        }
+
+        const result = await booksCollection.deleteOne(query);
+
+        if (result.deletedCount === 0) {
+          return res
+            .status(404)
+            .send({ message: "Book not found", queryUsed: query });
+        }
+
+        res.send(result);
+      } catch (error) {
+        console.error("Delete error:", error);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
+
     app.get("/books/:id", async (req, res) => {
       try {
         const isbn = req.params.id;
@@ -349,40 +383,40 @@ async function run() {
       res.send({ url: session.url });
     });
 
-    // app.patch("/payment-success", async (req, res) => {
-    //   const sessionId = req.query.session_id;
-    //   const session = await stripe.checkout.sessions.retrieve(sessionId);
+    app.patch("/books/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { status } = req.body;
+        let filter;
 
-    //   const query = { paymentID: session.payment_intent };
+        if (ObjectId.isValid(id) && id.length === 24) {
+          filter = {
+            $or: [{ _id: new ObjectId(id) }, { _id: id }],
+          };
+        } else {
+          filter = {
+            $or: [{ _id: id }, { _id: parseInt(id) }, { _id: Number(id) }],
+          };
+        }
 
-    //   const result = paymentCollection.findOne(query);
-    //   console.log(result);
-    //   if (result) {
-    //     res.send({ message: "Payment already recorded" });
-    //   }
+        const updateDoc = {
+          $set: {
+            status: status,
+          },
+        };
 
-    //   const paymentRecord = {
-    //     paymentID: session.payment_intent,
-    //     amount_total: session.amount_total / 100,
-    //     date: new Date(),
-    //   };
+        const result = await booksCollection.updateOne(filter, updateDoc);
 
-    //   await paymentCollection.insertOne(paymentRecord);
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: "Book not found" });
+        }
 
-    //   if (session.payment_status === "paid") {
-    //     const id = session.metadata.parcelId;
-    //     const query = { _id: new ObjectId(id) };
-    //     const update = {
-    //       $set: {
-    //         status: "paid",
-    //       },
-    //     };
-
-    //     const result = await ordersCollection.updateOne(query, update);
-    //     return res.send(result);
-    //   }
-    //   return res.send({ success: false });
-    // });
+        res.send(result);
+      } catch (error) {
+        console.error("Failed to update book:", error);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
 
     app.patch("/payment-success", async (req, res) => {
       try {
