@@ -118,7 +118,6 @@ async function run() {
     app.get("/orders", async (req, res) => {
       try {
         const email = req.query.email;
-        console.log(email);
         if (!email) {
           return res.status(400).send({ message: "Email is required" });
         }
@@ -329,6 +328,25 @@ async function run() {
         res
           .status(500)
           .send({ success: false, message: "Internal Server Error" });
+      }
+    });
+
+    app.get("/invoices", async (req, res) => {
+      try {
+        const email = req.query.email;
+
+        if (!email) {
+          return res.status(400).send({ message: "Email is required" });
+        }
+
+        const query = { customer_email: email };
+
+        const result = await paymentCollection.find(query).toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.error("Invoices error:", error);
+        res.status(500).send({ message: "Failed to fetch invoices" });
       }
     });
     console.log(
