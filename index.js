@@ -52,6 +52,59 @@ async function run() {
     const booksCollection = db.collection("books");
     const ordersCollection = db.collection("orders");
     const paymentCollection = db.collection("payment");
+    const requestCollection = db.collection("request");
+
+    // request book api
+    app.post("/request-book", async (req, res) => {
+      try {
+        const { email, ...bookInfo } = req.body;
+
+        // Basic validation
+        if (!email) {
+          return res.status(400).send({
+            success: false,
+            message: "Email is required",
+          });
+        }
+
+        if (!Object.keys(bookInfo).length) {
+          return res.status(400).send({
+            success: false,
+            message: "Book data is required",
+          });
+        }
+
+        const bookData = {
+          email,
+          ...bookInfo,
+          createdAt: new Date(),
+          status: "pending",
+        };
+
+        const result = await requestCollection.insertOne(bookData);
+
+        if (!result.insertedId) {
+          return res.status(500).send({
+            success: false,
+            message: "Failed to request book",
+          });
+        }
+
+        res.status(201).send({
+          success: true,
+          message: "Book request submitted successfully",
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Failed to add book:", error);
+        res.status(500).send({
+          success: false,
+          message: "Internal server error",
+        });
+      }
+    });
+
+    // search
 
     app.get("/books/search", async (req, res) => {
       try {
