@@ -53,6 +53,36 @@ async function run() {
     const ordersCollection = db.collection("orders");
     const paymentCollection = db.collection("payment");
 
+    app.get("/books/search", async (req, res) => {
+      try {
+        const { query } = req.query;
+
+        // Safety check: if query is empty, return empty array immediately
+        if (!query || query.trim() === "") {
+          return res.json([]);
+        }
+
+        const searchCriteria = {
+          $or: [
+            { title: { $regex: query, $options: "i" } },
+            { authors: { $regex: query, $options: "i" } },
+          ],
+        };
+
+        const results = await booksCollection
+          .find(searchCriteria)
+          .limit(8)
+          .toArray();
+
+        // Ensure results is always an array
+        res.json(results || []);
+      } catch (error) {
+        console.error(error);
+        // Even on error, send an empty array to prevent frontend crash
+        res.status(500).json([]);
+      }
+    });
+
     // users API
     app.get("/banner-slider", async (req, res) => {
       try {
@@ -61,6 +91,29 @@ async function run() {
       } catch (error) {
         console.error("Failed", error);
         res.status(500).send({ message: "Failed" });
+      }
+    });
+
+    app.put("/librarian/books/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+
+        // Spread the body directly into $set
+        const updateDoc = {
+          $set: { ...req.body },
+        };
+
+        const result = await booksCollection.updateOne(filter, updateDoc);
+
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: "Book not found" });
+        }
+
+        res.send(result);
+      } catch (error) {
+        console.error("Failed to update book:", error);
+        res.status(500).send({ message: "Internal Server Error" });
       }
     });
 
